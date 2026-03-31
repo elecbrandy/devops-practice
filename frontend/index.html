@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>Jenkins 실습 앱</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Courier New', monospace;
+      background: #0f0f0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .container {
+      width: 480px;
+      padding: 40px;
+      border: 1px solid #2a2a2a;
+      background: #161616;
+    }
+
+    h1 {
+      font-size: 1.1rem;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #4ade80;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 0.72rem;
+      color: #555;
+      margin-bottom: 32px;
+      letter-spacing: 0.08em;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+
+    input {
+      flex: 1;
+      background: #0f0f0f;
+      border: 1px solid #2a2a2a;
+      color: #e0e0e0;
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    input:focus { border-color: #4ade80; }
+
+    button {
+      background: #4ade80;
+      color: #0f0f0f;
+      border: none;
+      padding: 10px 18px;
+      font-family: inherit;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.05em;
+      transition: background 0.2s;
+    }
+
+    button:hover { background: #86efac; }
+
+    .item-list { list-style: none; }
+
+    .item-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border-bottom: 1px solid #1e1e1e;
+      font-size: 0.85rem;
+    }
+
+    .item-list li:last-child { border-bottom: none; }
+
+    .del-btn {
+      background: none;
+      color: #555;
+      padding: 2px 8px;
+      font-size: 0.75rem;
+      border: 1px solid #2a2a2a;
+      font-weight: 400;
+    }
+
+    .del-btn:hover { color: #f87171; border-color: #f87171; background: none; }
+
+    .empty { color: #3a3a3a; font-size: 0.8rem; padding: 16px 0; }
+
+    .status {
+      font-size: 0.7rem;
+      color: #555;
+      margin-top: 24px;
+      letter-spacing: 0.05em;
+    }
+
+    .status span { color: #4ade80; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Item Manager</h1>
+    <p class="subtitle">FastAPI · PostgreSQL · Jenkins CI/CD 실습</p>
+
+    <div class="input-row">
+      <input id="nameInput" type="text" placeholder="아이템 이름 입력..." />
+      <button onclick="addItem()">ADD</button>
+    </div>
+
+    <ul class="item-list" id="itemList">
+      <li class="empty">로딩 중...</li>
+    </ul>
+
+    <p class="status">API: <span id="apiStatus">connecting...</span></p>
+  </div>
+
+  <script>
+    const API = 'http://localhost:8000';
+
+    async function fetchItems() {
+      try {
+        const res = await fetch(`${API}/items`);
+        const items = await res.json();
+        const list = document.getElementById('itemList');
+        document.getElementById('apiStatus').textContent = 'connected ✓';
+
+        if (items.length === 0) {
+          list.innerHTML = '<li class="empty">아이템이 없습니다</li>';
+          return;
+        }
+        list.innerHTML = items.map(item => `
+          <li>
+            <span>#${item.id} — ${item.name}</span>
+            <button class="del-btn" onclick="deleteItem(${item.id})">DEL</button>
+          </li>
+        `).join('');
+      } catch (e) {
+        document.getElementById('apiStatus').textContent = 'error ✗';
+        document.getElementById('itemList').innerHTML = '<li class="empty">백엔드 연결 실패</li>';
+      }
+    }
+
+    async function addItem() {
+      const input = document.getElementById('nameInput');
+      const name = input.value.trim();
+      if (!name) return;
+      await fetch(`${API}/items`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      input.value = '';
+      fetchItems();
+    }
+
+    async function deleteItem(id) {
+      await fetch(`${API}/items/${id}`, { method: 'DELETE' });
+      fetchItems();
+    }
+
+    document.getElementById('nameInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') addItem();
+    });
+
+    fetchItems();
+  </script>
+</body>
+</html>
