@@ -10,7 +10,7 @@ env:
   FE_IMAGE_NAME: sk037-frontend
   BE_IMAGE_NAME: sk037-backend
   AWS_REGION: ap-northeast-2
-  EKS_CLUSTER_NAME: skala-edu-cluster
+  EKS_CLUSTER_NAME: skala-2025
   K8S_NAMESPACE: class-2
 
 jobs:
