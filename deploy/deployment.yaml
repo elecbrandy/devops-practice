@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: devops-practice-app
+  namespace: class-2
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: devops-practice-app
+  template:
+    metadata:
+      labels:
+        app: devops-practice-app
+    spec:
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: devops-practice-app
+          image: __IMAGE__
+          ports:
+            - containerPort: 8080
