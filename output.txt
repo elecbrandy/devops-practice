@@ -87,7 +87,44 @@ spec:
 ```
 
 ```
+./deploy/ingress.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: sk037-ingress
+  namespace: class-2
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$2
+spec:
+  ingressClassName: nginx
+  # EKS에서 AWS ALB를 사용 중이라면 'alb'로 변경하고 관련 어노테이션을 수정해야 합니다.
+  rules:
+    - http:
+        paths:
+          # 1. 백엔드 라우팅 (/api/items -> 백엔드의 /items)
+          - path: /api(/|$)(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: sk037-backend
+                port:
+                  number: 8000
+                  
+          # 2. 프론트엔드 라우팅 (나머지 모든 요청)
+          - path: /()(.*)
+            pathType: Prefix
+            backend:
+              service:
+                name: sk037-frontend
+                port:
+                  number: 8080
+```
+
+```
 ./deploy/frontend.yaml
+
+# ./deploy/frontend.yaml
 
 apiVersion: apps/v1
 kind: Deployment
@@ -122,7 +159,7 @@ spec:
   ports:
     - port: 8080
       targetPort: 80
-  type: LoadBalancer
+
 ```
 
 ```
@@ -343,6 +380,7 @@ jobs:
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/db.yaml
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/backend.yaml
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/frontend.yaml
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/ingress.yaml
           
           # 결과 확인
           kubectl get pods -n ${{ env.K8S_NAMESPACE }}
