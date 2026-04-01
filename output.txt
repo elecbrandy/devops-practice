@@ -44,48 +44,126 @@ logs-db:
 ```
 
 ```
-./deploy/deployment.yaml
+./deploy/db.yaml
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: devops-practice-app
+  name: sk037-db
   namespace: class-2
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: devops-practice-app
+      app: sk037-db
   template:
     metadata:
       labels:
-        app: devops-practice-app
+        app: sk037-db
+    spec:
+      containers:
+        - name: db
+          image: postgres:15-alpine
+          env:
+            - name: POSTGRES_DB
+              value: mydb
+            - name: POSTGRES_USER
+              value: myuser
+            - name: POSTGRES_PASSWORD
+              value: mypassword
+          ports:
+            - containerPort: 5432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sk037-db
+  namespace: class-2
+spec:
+  selector:
+    app: sk037-db
+  ports:
+    - port: 5432
+      targetPort: 5432
+```
+
+```
+./deploy/frontend.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sk037-frontend
+  namespace: class-2
+spec:
+  selector:
+    matchLabels:
+      app: sk037-frontend
+  template:
+    metadata:
+      labels:
+        app: sk037-frontend
     spec:
       imagePullSecrets:
         - name: harbor-secret
       containers:
-        - name: devops-practice-app
-          image: __IMAGE__
+        - name: frontend
+          image: __FE_IMAGE__
           ports:
-            - containerPort: 8080
-```
-
-```
-./deploy/service.yaml
-
+            - containerPort: 80
+---
 apiVersion: v1
 kind: Service
 metadata:
-  name: devops-practice-app-svc
+  name: sk037-frontend
   namespace: class-2
 spec:
   selector:
-    app: devops-practice-app
+    app: sk037-frontend
   ports:
-    - protocol: TCP
-      port: 80
+    - port: 8080
+      targetPort: 80
+  type: LoadBalancer
+```
+
+```
+./deploy/backend.yaml
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sk037-backend
+  namespace: class-2
+spec:
+  selector:
+    matchLabels:
+      app: sk037-backend
+  template:
+    metadata:
+      labels:
+        app: sk037-backend
+    spec:
+      imagePullSecrets:
+        - name: harbor-secret
+      containers:
+        - name: backend
+          image: __BE_IMAGE__
+          env:
+            - name: DB_HOST
+              value: "sk037-db"
+          ports:
+            - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sk037-backend
+  namespace: class-2
+spec:
+  selector:
+    app: sk037-backend
+  ports:
+    - port: 8000
       targetPort: 8000
-  type: ClusterIP
 ```
 
 ```
@@ -122,7 +200,7 @@ app.add_middleware(
 
 def get_conn():
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "db"),
+        host=os.getenv("DB_HOST", "sk037-db"),
         database=os.getenv("DB_NAME", "mydb"),
         user=os.getenv("DB_USER", "myuser"),
         password=os.getenv("DB_PASS", "mypassword"),
@@ -183,6 +261,95 @@ def delete_item(item_id: int):
 ```
 
 ```
+./.github/workflows/ci.yml
+
+name: Full Stack CI/CD to EKS
+
+on:
+  push:
+    branches: [ "main" ] # 메인 브랜치에 푸시될 때 실행
+
+env:
+  HARBOR_REGISTRY: amdp-registry.skala-ai.com
+  HARBOR_PROJECT: skala26a-ai2
+  FE_IMAGE_NAME: sk037-frontend
+  BE_IMAGE_NAME: sk037-backend
+  AWS_REGION: ap-northeast-2
+  EKS_CLUSTER_NAME: skala-2025
+  K8S_NAMESPACE: class-2
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Harbor
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.HARBOR_REGISTRY }}
+          username: ${{ secrets.HARBOR_USERNAME }}
+          password: ${{ secrets.HARBOR_PASSWORD }}
+
+      - name: Set Image Tag
+        run: echo "IMAGE_TAG=${{ github.run_number }}-${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Build and Push Frontend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          push: true
+          tags: ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.FE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Build and Push Backend
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          push: true
+          tags: ${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+  deploy:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Update Kubeconfig
+        run: |
+          aws eks update-kubeconfig --region ${{ env.AWS_REGION }} --name ${{ env.EKS_CLUSTER_NAME }}
+
+      - name: Deploy to EKS
+        run: |
+          # 이미지 태그 정보 생성
+          export IMAGE_TAG=${{ github.run_number }}-${{ github.sha }}
+          
+          # 파일 치환 (sed)
+          sed -i "s|__BE_IMAGE__|${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.BE_IMAGE_NAME }}:${IMAGE_TAG}|g" deploy/backend.yaml
+          sed -i "s|__FE_IMAGE__|${{ env.HARBOR_REGISTRY }}/${{ env.HARBOR_PROJECT }}/${{ env.FE_IMAGE_NAME }}:${IMAGE_TAG}|g" deploy/frontend.yaml
+
+          # K8s 적용
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/db.yaml
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/backend.yaml
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/frontend.yaml
+          
+          # 결과 확인
+          kubectl get pods -n ${{ env.K8S_NAMESPACE }}
+
+```
+
+```
 ./docker-compose.yml
 
 services:
@@ -205,7 +372,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DB_HOST: db
+      DB_HOST: sk037-db
       DB_NAME: mydb
       DB_USER: myuser
       DB_PASS: mypassword

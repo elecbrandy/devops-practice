@@ -78,6 +78,7 @@ jobs:
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/db.yaml
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/backend.yaml
           kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/frontend.yaml
+          kubectl apply -n ${{ env.K8S_NAMESPACE }} -f deploy/ingress.yaml
           
           # 결과 확인
           kubectl get pods -n ${{ env.K8S_NAMESPACE }}
