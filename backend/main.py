@@ -1,3 +1,5 @@
+# ./backend/main.py
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import psycopg2
@@ -37,11 +39,13 @@ def init_db():
 def startup():
     init_db()
 
-@app.get("/")
+# 기존 "/" 에서 "/api/" 로 변경 (ALB 헬스체크 및 기본 접속용)
+@app.get("/api/")
 def root():
     return {"message": "Hello from FastAPI!"}
 
-@app.get("/items")
+# 기존 "/items" 에서 "/api/items" 로 변경
+@app.get("/api/items")
 def get_items():
     conn = get_conn()
     cur = conn.cursor()
@@ -51,7 +55,8 @@ def get_items():
     conn.close()
     return [{"id": r[0], "name": r[1]} for r in rows]
 
-@app.post("/items")
+# 기존 "/items" 에서 "/api/items" 로 변경
+@app.post("/api/items")
 def create_item(payload: dict):
     name = payload.get("name", "")
     conn = get_conn()
@@ -63,7 +68,8 @@ def create_item(payload: dict):
     conn.close()
     return {"id": new_id, "name": name}
 
-@app.delete("/items/{item_id}")
+# 기존 "/items/{item_id}" 에서 "/api/items/{item_id}" 로 변경
+@app.delete("/api/items/{item_id}")
 def delete_item(item_id: int):
     conn = get_conn()
     cur = conn.cursor()
