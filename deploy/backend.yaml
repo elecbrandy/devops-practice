@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: backend
+  name: sk037-backend
   namespace: class-2
 spec:
   selector:
     matchLabels:
-      app: backend
+      app: sk037-backend
   template:
     metadata:
       labels:
-        app: backend
+        app: sk037-backend
     spec:
       imagePullSecrets:
         - name: harbor-secret
@@ -19,18 +19,18 @@ spec:
           image: __BE_IMAGE__
           env:
             - name: DB_HOST
-              value: "db"
+              value: "sk037-db"
           ports:
             - containerPort: 8000
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: backend
+  name: sk037-backend
   namespace: class-2
 spec:
   selector:
-    app: backend
+    app: sk037-backend
   ports:
     - port: 8000
       targetPort: 8000

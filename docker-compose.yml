@@ -18,7 +18,7 @@ services:
   backend:
     build: ./backend
     environment:
-      DB_HOST: db
+      DB_HOST: sk037-db
       DB_NAME: mydb
       DB_USER: myuser
       DB_PASS: mypassword

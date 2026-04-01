@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: db
+  name: sk037-db
   namespace: class-2
 spec:
   selector:
     matchLabels:
-      app: db
+      app: sk037-db
   template:
     metadata:
       labels:
-        app: db
+        app: sk037-db
     spec:
       containers:
         - name: db
@@ -28,11 +28,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: db
+  name: sk037-db
   namespace: class-2
 spec:
   selector:
-    app: db
+    app: sk037-db
   ports:
     - port: 5432
       targetPort: 5432

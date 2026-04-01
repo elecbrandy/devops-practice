@@ -14,7 +14,7 @@ app.add_middleware(
 
 def get_conn():
     return psycopg2.connect(
-        host=os.getenv("DB_HOST", "db"),
+        host=os.getenv("DB_HOST", "sk037-db"),
         database=os.getenv("DB_NAME", "mydb"),
         user=os.getenv("DB_USER", "myuser"),
         password=os.getenv("DB_PASS", "mypassword"),

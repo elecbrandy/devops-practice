@@ -1,16 +1,16 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: frontend
+  name: sk037-frontend
   namespace: class-2
 spec:
   selector:
     matchLabels:
-      app: frontend
+      app: sk037-frontend
   template:
     metadata:
       labels:
-        app: frontend
+        app: sk037-frontend
     spec:
       imagePullSecrets:
         - name: harbor-secret
@@ -23,12 +23,12 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: frontend
+  name: sk037-frontend
   namespace: class-2
 spec:
   selector:
-    app: frontend
+    app: sk037-frontend
   ports:
     - port: 80
       targetPort: 80
-  type: LoadBalancer # 외부에서 접속하기 위해 LoadBalancer 사용 추천
+  type: LoadBalancer
